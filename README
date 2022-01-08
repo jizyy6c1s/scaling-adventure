@@ -1,1 +1,475 @@
-PASSKY IS THE BEST!
+\documentclass[a4paper,10pt]{article}
+\usepackage{fancyhdr, geometry, graphicx, hyperref, lastpage, textcomp, titling, xcolor}
+\usepackage[export]{adjustbox}
+\usepackage[most]{tcolorbox}
+\usepackage[T1]{fontenc}
+\usepackage[scaled]{beramono}
+
+\geometry{
+    a4paper,
+    total={170mm,240mm},
+    headheight=110pt,
+    left=20mm,
+    top=30mm,
+}
+
+\hypersetup{
+     colorlinks   = true,
+     citecolor    = gray,
+     linkcolor    = blue,
+     urlcolor     = blue,
+}
+\definecolor{light-gray}{gray}{0.95}
+\definecolor{PrivacyTools-primary}{HTML}{3498DB}
+\definecolor{PrivacyTools-secondary}{HTML}{8A9595}
+
+\newcommand{\code}[1]{\colorbox{light-gray}{\texttt{#1}}}
+\newtcblisting{commandshell}{
+    title={Output},
+    size=small,
+    enhanced,
+    frame style={left color=PrivacyTools-primary!75!black,right color=PrivacyTools-primary!10!PrivacyTools-secondary},
+    colback=black,
+    colupper=white,
+    listing only,
+    listing options={style=tcblatex,language={}, extendedchars=true}
+}
+
+\newtcblisting{cmdbox}{
+    title={Input},
+    size=small,
+    enhanced,
+    frame style={left color=PrivacyTools-primary!75!black,right color=PrivacyTools-primary!10!PrivacyTools-secondary},
+    listing only,
+    listing options={style=tcblatex,language={}, extendedchars=true}
+}
+
+\renewcommand{\headrulewidth}{0pt}
+    \fancyhead[L]{
+        \def\svgwidth{1cm}
+        \input{shield.pdf_tex}
+    }
+    \fancyfoot[C]{}
+    \fancyfoot[R]{\thepage}
+
+\title{Securing Zoom in a Virtual Machine}
+\author{Daniel Gray}
+\date{\today}
+\begin{document}
+
+\vspace*{2cm}
+
+\begin{titlingpage}
+\begin{center}
+
+\vspace{4cm}
+\begin{large}
+\textbf{\thetitle} \\
+\end{large}
+\theauthor\\
+\vspace{4cm}
+
+Written for...
+
+\def\svgwidth{10cm}
+\input{horizontal.pdf_tex}
+
+\vspace{7cm}
+\thedate
+
+Version 1.0
+\end{center}
+\end{titlingpage}
+\pagestyle{fancy}
+
+\tableofcontents
+
+\newpage
+
+\section{Download the necessary files}
+\begin{enumerate}
+    \item Download VirtualBox for your platform from the \href{https://www.virtualbox.org/wiki/Downloads}{download site}. Get the ``SHA256 checksums'' too. \\ It is assumed you saved these files in \code{Downloads/VirtualBox}.
+    \item If you plan on using a webcam then also download the ``VirtualBox Extension Pack'' to this directory.
+    \item Download Debian. The files you want are \code{debian-10.3.0-amd64-xfce-CD-1.iso} (latest at time of writing), \code{SHA256SUMS.sign} and \code{SHA256SUMS}.
+
+    You can do so by \href{https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/}{HTTP} (slower download) or \href{https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/}{BitTorrent}
+    (preferred as it's faster). A popular BitTorrent client is \href{https://transmissionbt.com/download/}{Transmission}. It is assumed you saved these files to \code{Downloads/Debian}.
+\end{enumerate}
+
+\section{Verifying the files}
+\subsection{Windows 10}
+
+\begin{enumerate}
+    \item Download \href{https://www.gpg4win.org/download.html}{gpg4win} to \code{Downloads/gpg4win}.
+    \item Next verify the \href{https://en.wikipedia.org/wiki/Checksum}{checksum} matches that on the \href{https://www.gpg4win.org/package-integrity.html}{package integrity} page. You may need to scroll down to the part that says ``SHA256 checksums''.
+    \item Click on ``Start'', type in ``cmd'' and then open ``Command Prompt''.
+
+    \includegraphics[scale=0.15,valign=t]{./img/open_cmd_prompt_annotated.png}
+
+    \item Assuming you saved the downloaded files to the above directory, type in:
+
+    \begin{cmdbox}
+cd %USERPROFILE%\Downloads\gpg4win
+certutil -hashfile gpg4win-3.1.11.exe SHA256
+cd %USERPROFILE%\Downloads\VirtualBox
+certutil -hashfile VirtualBox-6.1.4-136177-Win.exe SHA256
+certutil -hashfile Oracle_VM_VirtualBox_Extension_Pack-6.1.4.vbox-extpack SHA256
+    \end{cmdbox}
+
+    \begin{commandshell}
+SHA256 hash of gpg4win-3.1.11.exe:
+156de9f3f50bb5a42b207af67ae4ebcb2d10a7aaf732149e9c468eaf74ce7ffc
+CertUtil: -hashfile command completed successfully.
+
+SHA256 hash of VirtualBox-6.1.4-136177-Win.exe:
+66218bcdb4f118e7b5d50e1804e5ec7e0b26d20976415b56992ffb0143b8fa7c
+CertUtil: -hashfile command completed successfully.
+
+SHA256 hash of Oracle_VM_VirtualBox_Extension_Pack-6.1.4.vbox-extpack:
+3b73798d776ff223ea8025b1a45001762f8d4e5bcd1ea61449773c1249935800
+CertUtil: -hashfile command completed successfully.
+    \end{commandshell}
+
+    Check that the corresponding output matches the SHA256 checksum on the \href{https://www.gpg4win.org/package-integrity.html}{package integrity} page. Also check the output matches \code{Downloads\symbol{92}VirtualBox\symbol{92}SHA256SUMS}. You can drag \code{SHA256SUMS} into Notepad to check.
+
+    \item Open the gpg4win installer and follow the steps presented.
+    \item In the command window we want to \href{https://www.debian.org/CD/verify}{verify the authenticity}. We download the Debian public signing key.
+
+    \begin{cmdbox}
+gpg --keyserver hkps://keyring.debian.org \
+--recv-key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
+    \end{cmdbox}
+
+    \begin{commandshell}
+gpg: key DA87E80D6294BE9B: public key "Debian CD signing key <debian-cd@lists.debian.org>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+    \end{commandshell}
+
+    \item Then we check the authenticity of the SHA256SUMS for Debian:
+
+    \begin{cmdbox}
+cd %USERPROFILE%\Downloads\Debian
+gpg --verify SHA256SUMS.sign
+    \end{cmdbox}
+
+    \item The result should be ``Good signature'':
+
+    \begin{commandshell}
+gpg: key DA87E80D6294BE9B: public key "Debian CD signing key <debian-cd@lists.debian.org>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+
+gpg: assuming signed data in 'SHA256SUMS'
+gpg: Signature made Sun 09 Feb 2020 02:01:05 UTC
+gpg:                using RSA key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
+gpg: Good signature from "Debian CD signing key <debian-cd@lists.debian.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: DF9B 9C49 EAA9 2984 3258  9D76 DA87 E80D 6294 BE9B
+    \end{commandshell}
+
+    \item Finally check the checksum for the Debian \code{debian-10.3.0-amd64-xfce-CD-1.iso} matches the one in the \code{Downloads\symbol{92}Debian\symbol{92}SHA256SUMS} file.
+
+    \begin{cmdbox}
+certutil -hashfile debian-10.3.0-amd64-xfce-CD-1.iso SHA256
+    \end{cmdbox}
+
+    \begin{commandshell}
+SHA256 hash of debian-10.3.0-amd64-xfce-CD-1.iso:
+47671cf75c68b8f0a2169857a7e2fe371553de3c956b87688604cc920bceb52e
+CertUtil: -hashfile command completed successfully.
+    \end{commandshell}
+\end{enumerate}
+
+\subsection{Mac OS}
+\begin{enumerate}
+        \item Download \href{https://gpgtools.org}{GPGTools}, verify the \href{https://en.wikipedia.org/wiki/Checksum}{checksum} matches that on the GPGTools page. You'll need to mouse over ``SHA256'' to see it.
+        \item Open Terminal.app and run these commands
+
+    \begin{cmdbox}
+cd ~/Downloads/GPGTools
+shasum -a 256 GPG_Suite-2019.2.dmg
+cd ~/Downloads/VirtualBox
+shasum -a 256 VirtualBox-6.1.4-136177-OSX.dmg
+shasum -a 256 Oracle_VM_VirtualBox_Extension_Pack-6.1.4.vbox-extpack
+    \end{cmdbox}
+
+    The output should look like this:
+    \begin{commandshell}
+98e26e3dc2fadc3563ef1add6bc2cdaefa986462aeae256a20e894e16118a179  GPG_Suite-2019.2.dmg
+
+2bc5d7282d9af9ce12dffddb528dcf6c9eb7ea92e644885d805e1e56fd55bacf  VirtualBox-6.1.4-136177-OSX.dmg
+
+3b73798d776ff223ea8025b1a45001762f8d4e5bcd1ea61449773c1249935800  Oracle_VM_VirtualBox_Extension_Pack-6.1.4.vbox-extpack
+    \end{commandshell}
+
+    \item If you already have an installed installation of \code{gpg} you can verify the signature and file in the Terminal with:
+
+    \begin{cmdbox}
+gpg --keyserver hkps://keys.openpgp.org --recv-key 85E38F69046B44C1EC9FB07B76D78F0500D026C4
+cd ~/Downloads/GPGTools
+gpg --verify GPG_Suite-2019.2.dmg.sig
+    \end{cmdbox}
+
+    \begin{commandshell}
+gpg: key 76D78F0500D026C4: 3 signatures not checked due to missing keys
+gpg: key 76D78F0500D026C4: public key "GPGTools Team <team@gpgtools.org>" imported
+gpg: no ultimately trusted keys found
+gpg: Total number processed: 1
+gpg:               imported: 1
+
+gpg: assuming signed data in 'GPG_Suite-2019.2.dmg'
+gpg: Signature made Fri 15 Nov 2019 15:23:17 UTC
+gpg:                using RSA key 8C31E5A17DD5D932B448FE1DE8A664480D9E43F5
+gpg: Good signature from "GPGTools Team <team@gpgtools.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 85E3 8F69 046B 44C1 EC9F  B07B 76D7 8F05 00D0 26C4
+     Subkey fingerprint: 8C31 E5A1 7DD5 D932 B448  FE1D E8A6 6448 0D9E 43F5
+    \end{commandshell}
+
+    \item Verify the authenticity of Debian:
+
+    \begin{cmdbox}
+gpg --keyserver hkps://keyring.debian.org \
+--recv-key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
+cd ~/Downloads/Debian
+gpg --verify SHA256SUMS.sign
+    \end{cmdbox}
+
+   \begin{commandshell}
+gpg: key DA87E80D6294BE9B: public key "Debian CD signing key <debian-cd@lists.debian.org>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+
+gpg: assuming signed data in 'SHA256SUMS'
+gpg: Signature made Sun 09 Feb 2020 02:01:05 UTC
+gpg:                using RSA key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
+gpg: Good signature from "Debian CD signing key <debian-cd@lists.debian.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: DF9B 9C49 EAA9 2984 3258  9D76 DA87 E80D 6294 BE9B
+    \end{commandshell}
+
+    \item Finally check the SHA256 checksum against the Debian ISO.
+
+    \begin{cmdbox}
+shasum -c --ignore-missing SHA256SUMS
+    \end{cmdbox}
+
+    \begin{commandshell}
+debian-10.3.0-amd64-xfce-CD-1.iso: OK
+    \end{commandshell}
+\end{enumerate}
+
+\subsection{Linux}
+\begin{enumerate}
+        \item Linux distributions already include \code{gpg} so it does not need to be installed, open a terminal and type:
+
+   \begin{cmdbox}
+gpg --keyserver hkps://keyring.debian.org \
+--recv-key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
+cd ~/Downloads/Debian
+gpg --verify SHA256SUMS.sign
+   \end{cmdbox}
+
+   \begin{commandshell}
+gpg: key DA87E80D6294BE9B: public key "Debian CD signing key <debian-cd@lists.debian.org>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+
+gpg: assuming signed data in 'SHA256SUMS'
+gpg: Signature made Sun 09 Feb 2020 02:01:05 UTC
+gpg:                using RSA key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
+gpg: Good signature from "Debian CD signing key <debian-cd@lists.debian.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: DF9B 9C49 EAA9 2984 3258  9D76 DA87 E80D 6294 BE9B
+    \end{commandshell}
+
+\item Verify the file against the ISO image:
+
+    \begin{cmdbox}
+sha256sum -c --ignore-missing  SHA256SUMS
+    \end{cmdbox}
+
+   \begin{commandshell}
+debian-10.3.0-amd64-xfce-CD-1.iso: OK
+    \end{commandshell}
+
+    \item For VirtualBox on Linux follow the instructions for your distribution on the \href{https://www.virtualbox.org/wiki/Linux_Downloads}{Linux Downloads} page.
+\end{enumerate}
+
+\section{Setting up the VM}
+\begin{enumerate}
+        \item Once VirtualBox is installed open \code{Oracle\_VM\_VirtualBox\_Extension\_Pack-6.1.4.vbox-extpack}.
+    \includegraphics[scale=0.6,valign=t]{./img/Extension_Pack_Successful.png}
+
+    \item Create a new VM
+
+    \includegraphics[scale=0.4,valign=t]{./img/Create_New_VM.png}
+
+    \item Name VM and select location
+
+    \includegraphics[scale=0.7,valign=t]{./img/Name_VM.png}
+
+    \newpage
+
+    \item Set a memory size. Assuming you have 8GB of RAM total, you could allocate 3-4 GB to Debian.
+
+    \includegraphics[scale=0.6,valign=t]{./img/Memory_Size.png}
+
+    \item Hard disk, ``Create a virtual hard disk now''.
+
+    \includegraphics[scale=0.6,valign=t]{./img/Hard_Disk.png}
+
+    \newpage
+
+    \item Leave hard disk file type as ``VDI (VirtualBox Disk Image)''.
+
+    \includegraphics[scale=0.6,valign=t]{./img/Hard_disk_file_type.png}
+
+    \item Leave as storage as ``Dynamically allocated''.
+
+    \includegraphics[scale=0.5,valign=t]{./img/Storage_on_physical_hard_disk.png}
+
+    \item Set a size for the VM, 15GB should be ample.
+
+    \includegraphics[scale=0.5,valign=t]{./img/File_location_and_size.png}
+
+    \newpage
+
+    \item Enter the VM's Settings
+
+    \includegraphics[scale=0.4,valign=t]{./img/Settings.png}
+
+    \item Optional: For some AMD based processors it may be required that users enable \href{https://en.wikipedia.org/wiki/X86_virtualization#AMD_virtualization_(AMD-V)}{Secure Virtual Machine (SVM)} in the \href{https://en.wikipedia.org/wiki/Unified_Extensible_Firmware_Interface}{Unified Extensible Firmware Interface (UEFI)} menu during boot.
+
+    The UEFI menu is different for each PC, but usually you press DELETE or F12 or sometimes even ESC to enter it. There might even be an item called ``Enter Setup'' or something like that. It is able to manipulate certain hardware options on the computer at a lower level than the operating system. Mac users won't have to worry about this. You'll know if you have to do this if you see this error:
+
+    \includegraphics[scale=0.6,valign=t]{./img/SVM.png}
+
+    \newpage
+
+    \item Mount a Debian CD to install
+
+    \includegraphics[scale=0.347,valign=t]{./img/Debian_CD.png}
+
+    \item Add a shared folder, this is used for transfering files into the VM
+
+    \includegraphics[scale=0.347,valign=t]{./img/Share_folder.png}
+
+    \newpage
+
+    \item Adjust video memory.
+
+    \includegraphics[scale=0.20,valign=t]{./img/Video_Memory_Scale_factor_annotated.png}
+
+    \item Optional: If you have a \href{https://en.wikipedia.org/wiki/4K_resolution}{4K UHD} screen you may want to set a scale factor under ``Settings'' \textrightarrow ``Display'' This includes Macs with a \href{https://en.wikipedia.org/wiki/Retina_display}{Retina display} for example.
+
+    \item Click on the green ``Start'' arrow to start the VM. Run the through the Debian installer. If you need help with that take a look at \href{https://www.debian.org/releases/stable/amd64/ch06.en.html}{Chapter 6. Using the Debian Installer}.
+
+    \includegraphics[valign=t]{./img/Start.png}
+
+    \item Optional: If you're on a Linux host make sure to \href{https://www.virtualbox.org/manual/ch02.html#install-linux-vboxusers}{add yourself to the \code{vboxusers} group} so you can use shared folders in your guest.
+
+    \begin{cmdbox}
+sudo gpasswd -a $USER vboxusers
+    \end{cmdbox}
+
+    \newpage
+
+    \item Once the virtual machine has started install the guest tools.
+
+    \includegraphics[scale=0.5,valign=t]{./img/Install_guest_tools.png}
+
+    \item Open the CD that appeared on the desktop. The contents will be mounted to \code{/media/cdrom}
+
+    \includegraphics[scale=0.5,valign=t]{./img/Open_CD.png}
+
+    \newpage
+
+    \item Open a terminal within the VM
+
+    \includegraphics[scale=0.5,valign=t]{./img/Open_terminal.png}
+
+    \item Now install the guest tools. We need to install some development tools such as a compiler and kernel headers.
+
+    \begin{cmdbox}
+sudo apt install build-essential linux-headers-$(uname -r)
+cd /media/cdrom
+sudo sh ./VBoxLinuxAdditions.run
+    \end{cmdbox}
+
+    \item In the VM you'll want to add yourself to the \code{video} and \code{vboxsf} group. Omit the video group if you don't plan on using your webcam in the virtual machine
+
+    \begin{cmdbox}
+sudo gpasswd -a $USER video
+sudo gpasswd -a $USER vboxsf
+    \end{cmdbox}
+
+    \item In Windows you may need to enable your camera and microphone. This is in ``Start'' \textrightarrow ``Settings''.
+
+    \includegraphics[scale=0.15,valign=t]{./img/Access_Apps_Camera_annotated.png}
+    \includegraphics[scale=0.15,valign=t]{./img/Access_Desktop_Apps_Camera_annotated.png}
+
+    \item You will also need to enable access to your microphone if you wish to use that.
+
+    \includegraphics[scale=0.15,valign=t]{./img/Access_Apps_Microphone_annotated.png}
+    \includegraphics[scale=0.15,valign=t]{./img/Access_Desktop_Apps_Microphone_annotated.png}
+
+    \newpage
+
+    \item Optional: Add the camera to the VM. See the ``Devices'' \textrightarrow ``Webcams'' menu in the VM. Unfortunately some USB 2.0 cameras will not work. There is a related bug \href{https://www.virtualbox.org/ticket/242#comment:54}{No image with USB 2.0 webcams}. Most will likely work however.
+
+    \includegraphics[scale=0.50,valign=t]{./img/Attach_Camera.png}
+
+    \item Optional: If the previous step didn't work, you can try to use USB passthrough instead. Start the VM guest. Once started go to ``Settings'' \textrightarrow ``USB'' and attach the camera..
+
+    \includegraphics[scale=0.50,valign=t]{./img/USB_Passthrough.png}
+
+    \item Inside the VM you can test if the camera is working by trying to record something with a program called ``guvcview''
+    \begin{cmdbox}
+sudo apt install guvcview
+    \end{cmdbox}
+
+    You should then be able to open it from the menu, or by typing ``guvcview'' in the terminal.
+
+    \item Finally reboot the VM, you can use this command in Terminal or click reboot from the menu.
+    \begin{cmdbox}
+reboot
+    \end{cmdbox}
+\end{enumerate}
+
+\newpage
+
+\section{Installing Zoom}
+\begin{enumerate}
+    \item When signing up to Zoom, use a throwaway email address if possible.
+    \item Download Zoom. You can either use the desktop client:
+
+    \includegraphics[scale=0.15,valign=t]{./img/Download_Desktop_Zoom.png}
+
+    To install Zoom and add missing dependencies:
+
+    \begin{cmdbox}
+cd ~/Downloads
+sudo apt install ./zoom*.deb
+    \end{cmdbox}
+
+    Or if you scroll down a bit further, the browser plugin:
+
+    \includegraphics[scale=0.15,valign=t]{./img/Download_Zoom_Browser.png}
+
+    If you do use the browser plugin you may find \href{https://github.com/arkadiyt/zoom-redirector}{zoom-redirector} useful. It will make sure that Zoom links you click on in your browser open in your browser.
+
+\section{Snapshots}
+
+    \item It also might be a good idea to create a ``Snapshot'' after you've got everything working. Any persistent files will not be kept when you restore the Snapshot.
+
+    \includegraphics[scale=0.60,valign=t]{./img/Go_to_snapshots.png}
+
+    \includegraphics[scale=0.60,valign=t]{./img/Take_snapshot.png}
+\end{enumerate}
+\end{document}
